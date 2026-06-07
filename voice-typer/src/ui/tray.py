@@ -1,24 +1,10 @@
+from pathlib import Path
 from PyQt6.QtWidgets import QSystemTrayIcon, QMenu, QWidget
-from PyQt6.QtGui import QIcon, QPixmap, QPainter, QColor, QAction, QCursor
+from PyQt6.QtGui import QIcon, QAction, QCursor
 from PyQt6.QtCore import QObject, pyqtSignal
 
 
-_CIRCLE_CACHE = {}
-
-
-def _circle_icon(color: QColor, size: int = 32) -> QIcon:
-    key = (color.name(), size)
-    if key not in _CIRCLE_CACHE:
-        pixmap = QPixmap(size, size)
-        pixmap.fill(QColor(0, 0, 0, 0))
-        painter = QPainter(pixmap)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setBrush(color)
-        painter.setPen(QColor(0, 0, 0, 0))
-        painter.drawEllipse(2, 2, size - 4, size - 4)
-        painter.end()
-        _CIRCLE_CACHE[key] = QIcon(pixmap)
-    return _CIRCLE_CACHE[key]
+_ICON_PATH = str(Path(__file__).parent / "icon.ico")
 
 
 class TrayManager(QObject):
@@ -36,7 +22,7 @@ class TrayManager(QObject):
         self._hidden.showMinimized()
 
         self._tray = QSystemTrayIcon(self._hidden)
-        self._tray.setIcon(_circle_icon(QColor(180, 180, 180)))
+        self._tray.setIcon(QIcon(_ICON_PATH))
         self._tray.setToolTip("語音輸入 - 待命")
 
         self._menu = QMenu(self._hidden)
@@ -76,21 +62,16 @@ class TrayManager(QObject):
         elif reason == QSystemTrayIcon.ActivationReason.DoubleClick:
             self.show_settings_requested.emit()
 
-    def _set_icon(self, color: QColor):
-        self._tray.setIcon(_circle_icon(color))
-
     def show(self):
         self._tray.show()
 
     def set_idle(self):
-        self._set_icon(QColor(180, 180, 180))
         self._tray.setToolTip("語音輸入 - 待命\nF8：開始錄音")
         self._toggle_action.setText("開始錄音 (F8)")
         self._toggle_action.setEnabled(True)
         self._cancel_action.setVisible(False)
 
     def set_recording(self):
-        self._set_icon(QColor(220, 50, 50))
         self._tray.setToolTip("🔴 錄音中...\nF8：停止錄音")
         self._toggle_action.setText("停止錄音 (F8)")
         self._toggle_action.setEnabled(True)
@@ -98,7 +79,6 @@ class TrayManager(QObject):
         self._cancel_action.setVisible(True)
 
     def set_processing(self):
-        self._set_icon(QColor(240, 180, 40))
         self._tray.setToolTip("⚙️ 處理中...")
         self._toggle_action.setText("處理中...")
         self._toggle_action.setEnabled(False)
@@ -106,7 +86,6 @@ class TrayManager(QObject):
 
     def flash_done(self):
         import threading
-        self._set_icon(QColor(80, 200, 80))
         self._tray.setToolTip("✅ 已輸入")
         self._toggle_action.setEnabled(True)
         threading.Timer(2.0, self.set_idle).start()

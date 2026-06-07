@@ -1,0 +1,53 @@
+語音輸入 — 使用說明
+====================
+
+【安裝方式】
+1. 雙點 pip_install.bat 安裝套件
+   （或打開終端機執行：pip install -r requirements.txt）
+
+2. 打開「設定」填入 Groq API Key（需先至 https://console.groq.com 申請）
+   也可直接編輯 %USERPROFILE%\.voice-typer\config.toml
+
+3. 雙點 launcher.bat 啟動程式
+
+
+【如何使用】
+1. 按 F8 開始錄音，說話
+2. 再按 F8 停止，文字會自動輸入到游標位置
+3. 如果都不說話，3 秒後會自動停止
+
+【快捷鍵】
+  F8            開始 / 停止錄音
+  Ctrl+Alt+S   開啟設定視窗
+  Ctrl+Q       離開程式
+
+【如何建立桌面捷徑】
+方法一：對 launcher.bat 按右鍵 → 傳送到 → 桌面（建立捷徑）
+        （圖示會是預設的批次檔圖示）
+
+方法二：對 create_shortcut.ps1 按右鍵 → 使用 PowerShell 執行
+        （桌面捷徑會自動套用 icon.ico 圖示）
+
+【系統匣圖示】
+   idle（待命） → 顯示 app 圖示
+   錄音中       → 滑鼠懸停顯示 🔴 錄音中...
+   處理中       → 滑鼠懸停顯示 ⚙️ 處理中...
+   完成         → 滑鼠懸停顯示 ✅ 已輸入
+
+【常見問題】
+Q: 錄音後沒有產生文字？
+A: 檢查右下角系統匣圖示，若出現錯誤提示，
+   請開啟設定確認 API Key 是否正確。
+
+Q: 麥克風沒有反應？
+A: 確認 Windows 的麥克風權限已開啟，且未被其他程式佔用。
+
+【檔案結構】
+voice-typer/
+├── launcher.bat          啟動程式
+├── create_shortcut.ps1   建立桌面捷徑（含圖示）
+├── pip_install.bat       一鍵安裝套件
+├── 使用說明.txt          本文件
+├── pyproject.toml        專案設定
+├── config.toml           設定範本（預設值）
+└── src/                  原始碼
