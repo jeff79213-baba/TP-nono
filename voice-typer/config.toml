@@ -1,0 +1,18 @@
+[api]
+groq_api_key = ""
+stt_model = "whisper-large-v3-turbo"
+llm_model = "llama-4-scout-17b-16e-instruct"
+
+[hotkey]
+record_key = "f8"
+
+[audio]
+silence_threshold = 0.01
+silence_timeout_seconds = 3.0
+sample_rate = 16000
+channels = 1
+
+[llm]
+system_prompt = "你是一位專業的文字編輯。請修正以下語音辨識文字中的錯字，加上適當的標點符號，並潤飾語氣使其通順自然。請直接輸出修正後的文字，不要加上任何前言或說明。"
+temperature = 0.3
+max_tokens = 1024
