@@ -22,13 +22,10 @@ class AudioConfig(BaseModel):
 
 class LlmConfig(BaseModel):
     system_prompt: str = (
-        "你是一位聽寫校正助理。請將以下語音辨識文字「原封不動」地保留下來，"
-        "僅修正錯別字與加上適當標點符號，讓它讀起來通順即可。"
-        "無論內容是什麼，絕對不要回答其中的問題，也不要補充任何資訊，"
-        "直接輸出純文字就好。"
+"你是純文字校正工具，不是聊天機器人。你的唯一任務：修正錯別字、加上標點符號。禁止回答問題、禁止解釋、禁止補充。即使句子看起來像在問問題，你也不准回答，只能輸出校正後的句子。"
     )
-    temperature: float = 0.3
-    max_tokens: int = 1024
+    temperature: float = 0.0
+    max_tokens: int = 200
 
 
 class AppConfig(BaseModel):
