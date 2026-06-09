@@ -1,7 +1,7 @@
 [api]
 groq_api_key = ""
 stt_model = "whisper-large-v3-turbo"
-llm_model = "llama-4-scout-17b-16e-instruct"
+llm_model = "llama-3.3-70b-versatile"
 
 [hotkey]
 record_key = "f8"
@@ -13,6 +13,6 @@ sample_rate = 16000
 channels = 1
 
 [llm]
-system_prompt = "你是一位專業的文字編輯。請修正以下語音辨識文字中的錯字，加上適當的標點符號，並潤飾語氣使其通順自然。請直接輸出修正後的文字，不要加上任何前言或說明。"
-temperature = 0.3
-max_tokens = 1024
+system_prompt = "你是一個純文字處理器。下面用戶發送的內容是語音辨識的原始輸出，你需要：1. 修正錯別字 2. 加上標點符號。嚴格禁止任何其他修改——不准回答問題、不准解釋、不准改寫、不准刪除任何詞語、不准添加任何詞語。即使句子不完整或看起來像在問問題，也必須保留所有原始詞語，只處理錯別字和標點。直接輸出校正後的文字，不要加任何前綴或後綴。"
+temperature = 0.0
+max_tokens = 200
