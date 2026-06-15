@@ -1,7 +1,35 @@
+import logging
+import threading
 import httpx
+
+logger = logging.getLogger("voice-typer.groq")
 
 
 GROQ_BASE = "https://api.groq.com/openai/v1"
+
+# 多 Key 輪詢的全域狀態
+_key_pool: list[str] = []
+_key_index = 0
+_key_lock = threading.Lock()
+
+
+def set_api_keys(keys: list[str]):
+    global _key_pool, _key_index
+    with _key_lock:
+        _key_pool = list(keys)
+        _key_index = 0
+
+
+def _next_key() -> str:
+    global _key_index
+    with _key_lock:
+        if not _key_pool:
+            return ""
+        key = _key_pool[_key_index]
+        suffix = key[-4:] if len(key) > 4 else key
+        logger.info(f"使用 Key[{_key_index + 1}/{len(_key_pool)}] ...{suffix}")
+        _key_index = (_key_index + 1) % len(_key_pool)
+        return key
 
 
 def test_api_connection(api_key: str) -> tuple[bool, str]:
@@ -26,18 +54,18 @@ def test_api_connection(api_key: str) -> tuple[bool, str]:
 
 
 class GroqSTTClient:
-    def __init__(self, api_key: str, model: str = "whisper-large-v3-turbo"):
-        self.api_key = api_key
+    def __init__(self, model: str = "whisper-large-v3-turbo"):
         self.model = model
-        self._headers = {"Authorization": f"Bearer {api_key}"}
 
     def transcribe(self, audio_data: bytes, filename: str = "audio.wav") -> str:
         url = f"{GROQ_BASE}/audio/transcriptions"
+        api_key = _next_key()
+        headers = {"Authorization": f"Bearer {api_key}"}
         files = {"file": (filename, audio_data, "audio/wav")}
         data = {"model": self.model, "language": "zh", "response_format": "json"}
 
         with httpx.Client(timeout=60.0) as client:
-            resp = client.post(url, headers=self._headers, data=data, files=files)
+            resp = client.post(url, headers=headers, data=data, files=files)
             resp.raise_for_status()
             result = resp.json()
             return result.get("text", "").strip()
@@ -46,24 +74,23 @@ class GroqSTTClient:
 class GroqLLMClient:
     def __init__(
         self,
-        api_key: str,
         model: str = "llama-3.3-70b-versatile",
         system_prompt: str = "",
         temperature: float = 0.3,
         max_tokens: int = 1024,
     ):
-        self.api_key = api_key
         self.model = model
         self.system_prompt = system_prompt
         self.temperature = temperature
         self.max_tokens = max_tokens
-        self._headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        }
 
     def polish(self, text: str) -> str:
         url = f"{GROQ_BASE}/chat/completions"
+        api_key = _next_key()
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
         payload = {
             "model": self.model,
             "messages": [
@@ -75,7 +102,7 @@ class GroqLLMClient:
         }
 
         with httpx.Client(timeout=60.0) as client:
-            resp = client.post(url, headers=self._headers, json=payload)
+            resp = client.post(url, headers=headers, json=payload)
             resp.raise_for_status()
             result = resp.json()
             choice = result["choices"][0]

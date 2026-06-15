@@ -12,6 +12,7 @@ class TrayManager(QObject):
     cancel_requested = pyqtSignal()
     show_settings_requested = pyqtSignal()
     show_about_requested = pyqtSignal()
+    edit_prompt_requested = pyqtSignal()
     quit_requested = pyqtSignal()
 
     def __init__(self, parent=None):
@@ -40,6 +41,10 @@ class TrayManager(QObject):
         self._about_action = QAction("說明")
         self._about_action.triggered.connect(self.show_about_requested.emit)
         self._menu.addAction(self._about_action)
+
+        self._edit_prompt_action = QAction("編輯潤飾指令")
+        self._edit_prompt_action.triggered.connect(self.edit_prompt_requested.emit)
+        self._menu.addAction(self._edit_prompt_action)
 
         self._settings_action = QAction("設定")
         self._settings_action.triggered.connect(self.show_settings_requested.emit)

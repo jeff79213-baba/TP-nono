@@ -4,7 +4,7 @@ from PyQt6.QtCore import QObject, pyqtSignal
 
 from src.config.manager import ConfigManager
 from src.core.audio_recorder import AudioRecorder
-from src.api.groq_client import GroqSTTClient, GroqLLMClient
+from src.api.groq_client import GroqSTTClient, GroqLLMClient, set_api_keys
 from src.core.type_in_engine import TypeInEngine
 
 logger = logging.getLogger("voice-typer.pipeline")
@@ -33,6 +33,10 @@ class PipelineOrchestrator(QObject):
         self._processing = False
 
         self._recorder.set_auto_stop_callback(self._on_auto_stop)
+        set_api_keys(config.config.api.groq_api_keys)
+
+    def sync_api_keys(self):
+        set_api_keys(self._config.config.api.groq_api_keys)
 
     def set_volume_callback(self, callback):
         self._recorder.set_volume_callback(callback)
@@ -77,9 +81,9 @@ class PipelineOrchestrator(QObject):
     def _process_audio(self):
         try:
             cfg = self._config.config
-            if not cfg.api.groq_api_key:
+            if not cfg.api.groq_api_keys:
                 logger.warning("API Key 未設定")
-                self.error_occurred.emit("請先在設定中填入 Groq API Key")
+                self.error_occurred.emit("請先在設定中填入至少一組 Groq API Key")
                 self._processing = False
                 self.processing_done.emit()
                 return
@@ -94,7 +98,7 @@ class PipelineOrchestrator(QObject):
 
             logger.info(f"取得錄音資料，大小: {len(audio_data)} bytes")
 
-            stt = GroqSTTClient(api_key=cfg.api.groq_api_key, model=cfg.api.stt_model)
+            stt = GroqSTTClient(model=cfg.api.stt_model)
             logger.info("呼叫語音辨識 API...")
             text = stt.transcribe(audio_data)
             logger.info(f"語音辨識結果: '{text}'")
@@ -107,7 +111,6 @@ class PipelineOrchestrator(QObject):
                 return
 
             llm = GroqLLMClient(
-                api_key=cfg.api.groq_api_key,
                 model=cfg.api.llm_model,
                 system_prompt=cfg.llm.system_prompt,
                 temperature=cfg.llm.temperature,

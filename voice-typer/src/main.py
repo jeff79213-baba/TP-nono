@@ -14,7 +14,7 @@ logging.basicConfig(
     level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     handlers=[
-        logging.FileHandler(str(_LOG_DIR / "app.log"), encoding="utf-8"),
+        logging.FileHandler(str(_LOG_DIR / "app.log"), mode="w", encoding="utf-8"),
         logging.StreamHandler(),
     ],
 )
@@ -22,7 +22,7 @@ logger = logging.getLogger("voice-typer")
 from src.core.pipeline import PipelineOrchestrator
 from src.core.hotkey_manager import HotkeyManager
 from src.ui.tray import TrayManager
-from src.ui.settings_window import SettingsWindow
+from src.ui.settings_window import SettingsWindow, PromptEditDialog
 from src.ui.volume_widget import VolumeWidget
 
 
@@ -35,9 +35,10 @@ Typeless 開源平替版 — 本地端語音輸入工具
 • 自動語音辨識（Groq STT）
 • AI 潤飾文字（Groq LLM）
 • 自動填入游標位置
+• 支援多組 API Key 自動輪詢，分散 Rate Limit
 
 使用方式：
-1. 在設定中填入 Groq API Key
+1. 在設定中填入 Groq API Key（可填入多組，每行一組）
 2. 按 F8 開始說話
 3. 再按 F8 結束，文字自動輸入
 
@@ -63,7 +64,7 @@ class AppController(QObject):
         self._hotkey.register()
         self._tray.show()
 
-        if not self._config.config.api.groq_api_key:
+        if not self._config.config.api.groq_api_keys:
             self._show_settings()
 
     def _connect_signals(self):
@@ -81,6 +82,7 @@ class AppController(QObject):
         self._tray.cancel_requested.connect(self._pipeline.cancel)
         self._tray.show_about_requested.connect(self._show_about)
         self._tray.show_settings_requested.connect(self._show_settings)
+        self._tray.edit_prompt_requested.connect(self._show_edit_prompt)
         self._tray.quit_requested.connect(self._quit)
 
         shortcut = QShortcut(QKeySequence("Ctrl+Q"), self._tray)
@@ -126,9 +128,14 @@ class AppController(QObject):
     def _show_settings(self):
         if self._settings_window is None or not self._settings_window.isVisible():
             self._settings_window = SettingsWindow(self._config)
+            self._settings_window.accepted.connect(self._pipeline.sync_api_keys)
             self._settings_window.show()
         else:
             self._settings_window.raise_()
+
+    def _show_edit_prompt(self):
+        dialog = PromptEditDialog(self._config)
+        dialog.exec()
 
     def _quit(self):
         self._hotkey.unregister()

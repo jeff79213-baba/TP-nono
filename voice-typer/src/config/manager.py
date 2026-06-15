@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 
 class ApiConfig(BaseModel):
-    groq_api_key: str = ""
+    groq_api_keys: list[str] = Field(default_factory=list)
     stt_model: str = "whisper-large-v3-turbo"
     llm_model: str = "llama-3.3-70b-versatile"
 
@@ -46,6 +46,11 @@ class ConfigManager:
     def _load(self) -> AppConfig:
         if CONFIG_FILE.exists():
             raw = toml.load(str(CONFIG_FILE))
+            # 向後相容：將舊的單一 groq_api_key 遷移到新的列表格式
+            if "api" in raw and isinstance(raw["api"].get("groq_api_key"), str):
+                old_key = raw["api"].pop("groq_api_key", "")
+                if old_key:
+                    raw["api"].setdefault("groq_api_keys", []).insert(0, old_key)
             config = AppConfig(**raw)
             self._save(config)
             return config
@@ -64,8 +69,8 @@ class ConfigManager:
     def config(self) -> AppConfig:
         return self._config
 
-    def update_api_key(self, key: str):
-        self._config.api.groq_api_key = key
+    def update_api_keys(self, keys: list[str]):
+        self._config.api.groq_api_keys = keys
         self._save(self._config)
 
     def update_stt_model(self, model: str):
@@ -74,6 +79,10 @@ class ConfigManager:
 
     def update_llm_model(self, model: str):
         self._config.api.llm_model = model
+        self._save(self._config)
+
+    def update_system_prompt(self, prompt: str):
+        self._config.llm.system_prompt = prompt
         self._save(self._config)
 
     def reload(self):

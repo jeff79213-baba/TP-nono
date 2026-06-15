@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "voice-typer"
-version = "0.1.0"
+version = "1.4.0"
 description = "Typeless 開源平替版 - 本地端語音輸入工具"
 requires-python = ">=3.11"
 dependencies = [
