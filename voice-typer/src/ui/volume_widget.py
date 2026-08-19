@@ -1,6 +1,6 @@
 import math
 import numpy as np
-from PyQt6.QtWidgets import QWidget
+from PyQt6.QtWidgets import QWidget, QApplication
 from PyQt6.QtGui import QPainter, QColor, QBrush, QPen
 from PyQt6.QtCore import Qt, QTimer, QRect
 
@@ -27,7 +27,7 @@ class VolumeWidget(QWidget):
         width = self.BAR_COUNT * (self.BAR_WIDTH + self.BAR_GAP) + self.BAR_GAP
         self.setFixedSize(width, self.MAX_HEIGHT + 40)
 
-        screen = parent.screen() if parent else None
+        screen = QApplication.primaryScreen()
         if screen:
             geo = screen.availableGeometry()
             x = geo.x() + (geo.width() - width) // 2

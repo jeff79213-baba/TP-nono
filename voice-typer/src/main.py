@@ -50,7 +50,7 @@ Typeless 開源平替版 — 本地端語音輸入工具
 
 
 class AppController(QObject):
-    def __init__(self, app: QApplication):
+    def __init__(self, app):
         super().__init__()
         self._app = app
         self._config = ConfigManager()
@@ -60,8 +60,9 @@ class AppController(QObject):
         self._volume_widget = VolumeWidget(None)
         self._settings_window = None
 
+        app.installNativeEventFilter(self._hotkey.native_event_filter())
         self._connect_signals()
-        self._hotkey.register()
+        self._hotkey.register(int(self._tray.native_window_id()))
         self._tray.show()
 
         if not self._config.config.api.groq_api_keys:
@@ -138,7 +139,7 @@ class AppController(QObject):
         dialog.exec()
 
     def _quit(self):
-        self._hotkey.unregister()
+        self._hotkey.unregister(int(self._tray.native_window_id()))
         self._app.quit()
 
 
@@ -152,3 +153,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

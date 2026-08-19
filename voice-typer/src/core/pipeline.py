@@ -5,6 +5,7 @@ from PyQt6.QtCore import QObject, pyqtSignal
 from src.config.manager import ConfigManager
 from src.core.audio_recorder import AudioRecorder
 from src.api.groq_client import GroqSTTClient, GroqLLMClient, set_api_keys
+from src.api.local_stt import LocalSTTClient, unload_model
 from src.core.type_in_engine import TypeInEngine
 
 logger = logging.getLogger("voice-typer.pipeline")
@@ -54,8 +55,8 @@ class PipelineOrchestrator(QObject):
             if self._processing:
                 return
             logger.info("自動停止錄音（靜音超時），開始處理")
-            self.recording_stopped.emit()
-            self._process_audio_async()
+        self.recording_stopped.emit()
+        self._process_audio_async()
 
     def toggle_recording(self):
         with self._lock:
@@ -81,12 +82,6 @@ class PipelineOrchestrator(QObject):
     def _process_audio(self):
         try:
             cfg = self._config.config
-            if not cfg.api.groq_api_keys:
-                logger.warning("API Key 未設定")
-                self.error_occurred.emit("請先在設定中填入至少一組 Groq API Key")
-                self._processing = False
-                self.processing_done.emit()
-                return
 
             audio_data = self._recorder.get_audio_data()
             if audio_data is None:
@@ -98,8 +93,25 @@ class PipelineOrchestrator(QObject):
 
             logger.info(f"取得錄音資料，大小: {len(audio_data)} bytes")
 
-            stt = GroqSTTClient(model=cfg.api.stt_model)
-            logger.info("呼叫語音辨識 API...")
+            if cfg.api.stt_mode == "local":
+                if not cfg.api.local_model:
+                    logger.warning("本機模型未設定")
+                    self.error_occurred.emit("請先在設定中選擇本機模型")
+                    self._processing = False
+                    self.processing_done.emit()
+                    return
+                stt = LocalSTTClient(model_name=cfg.api.local_model)
+                logger.info(f"使用本機模型 {cfg.api.local_model} 進行辨識...")
+            else:
+                if not cfg.api.groq_api_keys:
+                    logger.warning("API Key 未設定")
+                    self.error_occurred.emit("請先在設定中填入至少一組 Groq API Key")
+                    self._processing = False
+                    self.processing_done.emit()
+                    return
+                stt = GroqSTTClient(model=cfg.api.stt_model)
+                logger.info("呼叫語音辨識 API...")
+
             text = stt.transcribe(audio_data)
             logger.info(f"語音辨識結果: '{text}'")
 

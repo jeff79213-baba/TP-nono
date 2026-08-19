@@ -1,7 +1,9 @@
 [api]
 groq_api_keys = []
+stt_mode = "cloud"
 stt_model = "whisper-large-v3-turbo"
-llm_model = "llama-3.1-8b-instant"
+local_model = "tiny"
+llm_model = "openai/gpt-oss-120b"
 
 [hotkey]
 record_key = "f8"

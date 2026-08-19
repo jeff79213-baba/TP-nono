@@ -5,8 +5,10 @@ from pydantic import BaseModel, Field
 
 class ApiConfig(BaseModel):
     groq_api_keys: list[str] = Field(default_factory=list)
+    stt_mode: str = "cloud"
     stt_model: str = "whisper-large-v3-turbo"
-    llm_model: str = "llama-3.3-70b-versatile"
+    local_model: str = "tiny"
+    llm_model: str = "openai/gpt-oss-120b"
 
 
 class HotkeyConfig(BaseModel):
@@ -25,7 +27,7 @@ class LlmConfig(BaseModel):
 "你是一個純文字處理器。下面用戶發送的內容是語音辨識的原始輸出，你需要：1. 修正錯別字 2. 加上標點符號。嚴格禁止任何其他修改——不准回答問題、不准解釋、不准改寫、不准刪除任何詞語、不准添加任何詞語。即使句子不完整或看起來像在問問題，也必須保留所有原始詞語，只處理錯別字和標點。直接輸出校正後的文字，不要加任何前綴或後綴。"
     )
     temperature: float = 0.0
-    max_tokens: int = 200
+    max_tokens: int = 1024
 
 
 class AppConfig(BaseModel):
@@ -73,8 +75,16 @@ class ConfigManager:
         self._config.api.groq_api_keys = keys
         self._save(self._config)
 
+    def update_stt_mode(self, mode: str):
+        self._config.api.stt_mode = mode
+        self._save(self._config)
+
     def update_stt_model(self, model: str):
         self._config.api.stt_model = model
+        self._save(self._config)
+
+    def update_local_model(self, model: str):
+        self._config.api.local_model = model
         self._save(self._config)
 
     def update_llm_model(self, model: str):

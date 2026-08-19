@@ -1,6 +1,25 @@
+import ctypes
+import ctypes.wintypes
+import logging
 import time
-import keyboard
-from PyQt6.QtCore import QObject, pyqtSignal
+from PyQt6.QtCore import QObject, QAbstractNativeEventFilter, pyqtSignal
+
+logger = logging.getLogger("voice-typer.hotkey")
+
+WM_HOTKEY = 0x0312
+MOD_ALT = 0x0001
+MOD_CONTROL = 0x0002
+
+VK_F8 = 0x77
+VK_S = 0x53
+
+user32 = ctypes.windll.user32
+user32.RegisterHotKey.argtypes = [
+    ctypes.wintypes.HWND, ctypes.c_int, ctypes.c_uint, ctypes.c_uint,
+]
+user32.RegisterHotKey.restype = ctypes.c_int
+user32.UnregisterHotKey.argtypes = [ctypes.wintypes.HWND, ctypes.c_int]
+user32.UnregisterHotKey.restype = ctypes.c_int
 
 
 class HotkeyManager(QObject):
@@ -9,43 +28,70 @@ class HotkeyManager(QObject):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._hotkey = "f8"
-        self._settings_hotkey = "ctrl+alt+s"
+        self._hotkey_id = 1
+        self._settings_hotkey_id = 2
         self._registered = False
+        self._hwnd = None
         self._last_toggle = 0.0
         self._last_settings = 0.0
-        self._toggle_handler = None
-        self._settings_handler = None
+        self._filter = _HotkeyEventFilter(self)
 
-    def register(self):
+    def register(self, hwnd: int):
         if self._registered:
             return
-        self._toggle_handler = keyboard.add_hotkey(self._hotkey, self._on_toggle, suppress=False)
-        self._settings_handler = keyboard.add_hotkey(self._settings_hotkey, self._on_settings, suppress=False)
+        self._hwnd = hwnd
+        ok1 = user32.RegisterHotKey(hwnd, self._hotkey_id, 0, VK_F8)
+        ok2 = user32.RegisterHotKey(
+            hwnd, self._settings_hotkey_id, MOD_ALT | MOD_CONTROL, VK_S
+        )
+        if not ok1:
+            logger.warning("RegisterHotKey F8 失敗，可能被其他程式佔用")
+        if not ok2:
+            logger.warning("RegisterHotKey Ctrl+Alt+S 失敗")
         self._registered = True
 
-    def unregister(self):
+    def unregister(self, hwnd: int):
         if not self._registered:
             return
-        try:
-            keyboard.remove_hotkey(self._toggle_handler)
-            keyboard.remove_hotkey(self._settings_handler)
-        except Exception:
-            pass
+        user32.UnregisterHotKey(hwnd, self._hotkey_id)
+        user32.UnregisterHotKey(hwnd, self._settings_hotkey_id)
         self._registered = False
-        self._toggle_handler = None
-        self._settings_handler = None
 
-    def _on_toggle(self):
-        now = time.time()
-        if now - self._last_toggle < 0.3:
+    def reregister(self):
+        if self._hwnd is None:
             return
-        self._last_toggle = now
-        self.toggled.emit()
+        self._registered = False
+        self.register(self._hwnd)
 
-    def _on_settings(self):
+    def handle_wm_hotkey(self, wparam) -> bool:
         now = time.time()
-        if now - self._last_settings < 0.3:
-            return
-        self._last_settings = now
-        self.settings_requested.emit()
+        if wparam == self._hotkey_id:
+            if now - self._last_toggle < 0.3:
+                return True
+            self._last_toggle = now
+            self.toggled.emit()
+            return True
+        elif wparam == self._settings_hotkey_id:
+            if now - self._last_settings < 0.3:
+                return True
+            self._last_settings = now
+            self.settings_requested.emit()
+            return True
+        return False
+
+    def native_event_filter(self):
+        return self._filter
+
+
+class _HotkeyEventFilter(QAbstractNativeEventFilter):
+    def __init__(self, manager: HotkeyManager):
+        super().__init__()
+        self._mgr = manager
+
+    def nativeEventFilter(self, event_type, message):
+        if event_type == b"windows_generic_MSG":
+            msg = ctypes.wintypes.MSG.from_address(message.__int__())
+            if msg.message == WM_HOTKEY:
+                handled = self._mgr.handle_wm_hotkey(msg.wParam)
+                return (handled, 0)
+        return (False, 0)

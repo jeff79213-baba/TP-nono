@@ -67,6 +67,9 @@ class TrayManager(QObject):
         elif reason == QSystemTrayIcon.ActivationReason.DoubleClick:
             self.show_settings_requested.emit()
 
+    def native_window_id(self):
+        return int(self._hidden.winId())
+
     def show(self):
         self._tray.show()
 

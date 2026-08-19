@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QFormLayout, QLineEdit,
     QComboBox, QPushButton, QLabel, QMessageBox, QHBoxLayout,
-    QTextEdit, QPlainTextEdit,
+    QTextEdit, QPlainTextEdit, QGroupBox,
 )
 from PyQt6.QtCore import Qt
 
@@ -41,7 +41,23 @@ QPushButton {
 QPushButton:hover {
     background-color: #5a96d8;
 }
+QGroupBox {
+    color: #f0f0f0;
+    border: 1px solid #555;
+    border-radius: 4px;
+    margin-top: 12px;
+    padding-top: 16px;
+    font-weight: bold;
+}
+QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 4px;
+}
 """
+
+
+LOCAL_MODELS = ["tiny", "base", "small", "medium", "large-v3"]
 
 
 class SettingsWindow(QDialog):
@@ -49,42 +65,81 @@ class SettingsWindow(QDialog):
         super().__init__(parent)
         self._config = config
         self.setWindowTitle("語音輸入 - 設定")
-        self.setFixedSize(460, 360)
+        self.setFixedSize(500, 480)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowType.WindowContextHelpButtonHint)
         self.setStyleSheet(SETTINGS_STYLESHEET)
 
         layout = QVBoxLayout(self)
 
-        form = QFormLayout()
+        mode_group = QGroupBox("辨識模式")
+        mode_layout = QVBoxLayout(mode_group)
+
+        self._stt_mode = QComboBox()
+        self._stt_mode.addItems(["cloud", "local"])
+        self._stt_mode.setCurrentText(config.config.api.stt_mode)
+        self._stt_mode.currentTextChanged.connect(self._on_mode_changed)
+        mode_layout.addWidget(self._stt_mode)
+
+        mode_hint = QLabel(
+            "☁️ 雲端模式：需網路 & Groq API Key，速度快\n"
+            "💻 本機模式：離線運作，使用電腦本地運算"
+        )
+        mode_hint.setStyleSheet("color: #aaa; font-size: 11px;")
+        mode_layout.addWidget(mode_hint)
+
+        layout.addWidget(mode_group)
+
+        self._cloud_group = QGroupBox("雲端設定")
+        cloud_layout = QFormLayout(self._cloud_group)
 
         self._api_key_input = QPlainTextEdit()
-        self._api_key_input.setPlaceholderText("每行輸入一組 Groq API Key\n多組 Key 會自動輪流使用，分散 Rate Limit")
+        self._api_key_input.setPlaceholderText(
+            "每行輸入一組 Groq API Key\n多組 Key 會自動輪流使用，分散 Rate Limit"
+        )
         self._api_key_input.setPlainText("\n".join(config.config.api.groq_api_keys))
         self._api_key_input.setMaximumHeight(80)
-        form.addRow("Groq API Keys:", self._api_key_input)
+        cloud_layout.addRow("Groq API Keys:", self._api_key_input)
 
         self._stt_model = QComboBox()
-        self._stt_model.addItems(["whisper-large-v3-turbo", "whisper-large-v3", "distil-whisper-large-v3-en"])
+        self._stt_model.addItems([
+            "whisper-large-v3-turbo", "whisper-large-v3", "distil-whisper-large-v3-en",
+        ])
         idx = self._stt_model.findText(config.config.api.stt_model)
         if idx >= 0:
             self._stt_model.setCurrentIndex(idx)
-        form.addRow("STT 模型:", self._stt_model)
+        cloud_layout.addRow("STT 模型:", self._stt_model)
 
         self._llm_model = QComboBox()
         self._llm_model.addItems([
-            "llama-3.3-70b-versatile",
-            "llama-3.1-8b-instant",
-            "meta-llama/llama-4-scout-17b-16e-instruct",
+            "openai/gpt-oss-120b",
         ])
         idx2 = self._llm_model.findText(config.config.api.llm_model)
         if idx2 >= 0:
             self._llm_model.setCurrentIndex(idx2)
-        form.addRow("LLM 模型:", self._llm_model)
+        cloud_layout.addRow("LLM 模型:", self._llm_model)
 
-        layout.addLayout(form)
+        layout.addWidget(self._cloud_group)
+
+        self._local_group = QGroupBox("本機設定")
+        local_layout = QFormLayout(self._local_group)
+
+        self._local_model = QComboBox()
+        self._local_model.addItems(LOCAL_MODELS)
+        self._local_model.setCurrentText(config.config.api.local_model)
+        local_layout.addRow("Whisper 模型:", self._local_model)
+
+        local_info = QLabel(
+            "模型愈大 → 準確度愈高、速度愈慢\n"
+            "建議從 tiny 或 base 開始試用"
+        )
+        local_info.setStyleSheet("color: #aaa; font-size: 11px;")
+        local_layout.addRow("", local_info)
+
+        layout.addWidget(self._local_group)
+
         layout.addStretch()
 
-        self._test_btn = QPushButton("測試連線")
+        self._test_btn = QPushButton("測試雲端連線")
         self._test_btn.clicked.connect(self._on_test)
         layout.addWidget(self._test_btn)
 
@@ -102,6 +157,15 @@ class SettingsWindow(QDialog):
         btn_layout.addWidget(cancel_btn)
 
         layout.addLayout(btn_layout)
+
+        self._on_mode_changed(self._stt_mode.currentText())
+
+    def _on_mode_changed(self, mode: str):
+        is_cloud = mode == "cloud"
+        self._cloud_group.setVisible(is_cloud)
+        self._local_group.setVisible(not is_cloud)
+        self._test_btn.setVisible(is_cloud)
+        self._test_result.setVisible(is_cloud)
 
     def _get_keys(self) -> list[str]:
         return [
@@ -128,19 +192,27 @@ class SettingsWindow(QDialog):
             if not ok:
                 all_ok = False
         self._test_btn.setEnabled(True)
-        self._test_btn.setText("測試連線")
+        self._test_btn.setText("測試雲端連線")
         color = "#80c080" if all_ok else "#e08080"
         self._test_result.setStyleSheet(f"color: {color};")
         self._test_result.setText("\n".join(results))
 
     def _on_save(self):
-        keys = self._get_keys()
-        if not keys:
-            QMessageBox.warning(self, "警告", "請填入至少一組 Groq API Key")
-            return
-        self._config.update_api_keys(keys)
+        self._config.update_stt_mode(self._stt_mode.currentText())
+        self._config.update_local_model(self._local_model.currentText())
         self._config.update_stt_model(self._stt_model.currentText())
         self._config.update_llm_model(self._llm_model.currentText())
+
+        if self._stt_mode.currentText() == "cloud":
+            keys = self._get_keys()
+            if not keys:
+                QMessageBox.warning(self, "警告", "請填入至少一組 Groq API Key")
+                return
+            self._config.update_api_keys(keys)
+        else:
+            from src.api.local_stt import unload_model
+            unload_model()
+
         QMessageBox.information(self, "完成", "設定已儲存")
         self.accept()
 
