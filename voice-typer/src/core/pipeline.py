@@ -93,6 +93,15 @@ class PipelineOrchestrator(QObject):
 
             logger.info(f"取得錄音資料，大小: {len(audio_data)} bytes")
 
+            peak = self._recorder.peak_volume
+            min_vol = cfg.audio.min_volume_threshold
+            if peak < min_vol:
+                logger.info(f"錄音音量過低 (peak={peak:.4f} < threshold={min_vol})，跳過處理")
+                self.status_changed.emit("錄音音量過低，已略過")
+                self._processing = False
+                self.processing_done.emit()
+                return
+
             if cfg.api.stt_mode == "local":
                 if not cfg.api.local_model:
                     logger.warning("本機模型未設定")
