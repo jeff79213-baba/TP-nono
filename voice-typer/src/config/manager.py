@@ -20,6 +20,7 @@ class AudioConfig(BaseModel):
     silence_timeout_seconds: float = 3.0
     sample_rate: int = 16000
     channels: int = 1
+    min_volume_threshold: float = 0.003
 
 
 class LlmConfig(BaseModel):
