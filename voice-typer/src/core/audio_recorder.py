@@ -33,6 +33,7 @@ class AudioRecorder:
     _last_voice_time: float = 0.0
     _volume_callback = None
     _auto_stop_callback = None
+    _peak_volume: float = 0.0
 
     def set_volume_callback(self, callback):
         self._volume_callback = callback
@@ -71,6 +72,8 @@ class AudioRecorder:
                 raise sd.CallbackStop
 
             volume = float(np.sqrt(np.mean(indata ** 2)))
+            if volume > self._peak_volume:
+                self._peak_volume = volume
             if self._volume_callback:
                 self._volume_callback(volume)
 
@@ -128,8 +131,13 @@ class AudioRecorder:
         with self._lock:
             self._state = RecorderState.IDLE
             self._chunks = []
+            self._peak_volume = 0.0
             self._last_voice_time = 0.0
             self._stop_event.set()
+
+    @property
+    def peak_volume(self) -> float:
+        return self._peak_volume
 
     @property
     def is_recording(self) -> bool:
