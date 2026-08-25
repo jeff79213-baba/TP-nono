@@ -1,3 +1,4 @@
+import re
 import threading
 import logging
 from PyQt6.QtCore import QObject, pyqtSignal
@@ -9,6 +10,19 @@ from src.api.local_stt import LocalSTTClient, unload_model
 from src.core.type_in_engine import TypeInEngine
 
 logger = logging.getLogger("voice-typer.pipeline")
+
+HALLUCINATION_PATTERNS = [
+    r"请不吝点赞",
+    r"感谢观看",
+    r"订阅",
+    r"转发",
+    r"打赏",
+    r"明镜与点点栏目",
+]
+
+
+def _is_hallucination(text: str) -> bool:
+    return any(re.search(p, text) for p in HALLUCINATION_PATTERNS)
 
 
 class PipelineOrchestrator(QObject):
@@ -123,6 +137,13 @@ class PipelineOrchestrator(QObject):
 
             text = stt.transcribe(audio_data)
             logger.info(f"語音辨識結果: '{text}'")
+
+            if _is_hallucination(text):
+                logger.warning(f"偵測到 Whisper 幻覺: '{text[:50]}...'")
+                self.status_changed.emit("未偵測到語音")
+                self._processing = False
+                self.processing_done.emit()
+                return
 
             if not text:
                 logger.warning("語音辨識回傳空文字")
