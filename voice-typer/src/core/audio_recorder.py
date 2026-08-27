@@ -34,6 +34,7 @@ class AudioRecorder:
     _volume_callback = None
     _auto_stop_callback = None
     _peak_volume: float = 0.0
+    _device: int | None = None
 
     def set_volume_callback(self, callback):
         self._volume_callback = callback
@@ -53,7 +54,22 @@ class AudioRecorder:
         logger.info(f"開始錄音 (threshold={self.silence_threshold}, timeout={self.silence_timeout}s)")
         devices = sd.query_devices()
         default_input = sd.default.device[0]
-        logger.info(f"預設輸入裝置: {devices[default_input]['name'] if default_input else '系統預設'}")
+        if default_input is not None and devices[default_input]["max_input_channels"] == 0:
+            logger.warning(f"預設輸入裝置失效 ({devices[default_input]['name']})，重新尋找可用裝置")
+            default_input = None
+        if default_input is None:
+            default_input = next(
+                (i for i, d in enumerate(devices) if d["max_input_channels"] > 0),
+                None,
+            )
+            if default_input is not None:
+                logger.warning(f"改用可用輸入裝置: {devices[default_input]['name']}")
+        if default_input is None:
+            logger.error("找不到任何可用的輸入裝置")
+            self._device = None
+        else:
+            self._device = default_input
+            logger.info(f"預設輸入裝置: {devices[default_input]['name']}")
         self._thread = threading.Thread(target=self._record_loop, daemon=True)
         self._thread.start()
         return True
@@ -91,6 +107,7 @@ class AudioRecorder:
                 dtype=np.float32,
                 callback=callback,
                 blocksize=1024,
+                device=self._device,
             ):
                 while self._state == RecorderState.RECORDING:
                     if self._stop_event.wait(0.1):
