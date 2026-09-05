@@ -11,6 +11,7 @@ MOD_ALT = 0x0001
 MOD_CONTROL = 0x0002
 
 VK_F8 = 0x77
+VK_F7 = 0x76
 VK_S = 0x53
 
 user32 = ctypes.windll.user32
@@ -25,15 +26,18 @@ user32.UnregisterHotKey.restype = ctypes.c_int
 class HotkeyManager(QObject):
     toggled = pyqtSignal()
     settings_requested = pyqtSignal()
+    edit_prompt_requested = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._hotkey_id = 1
         self._settings_hotkey_id = 2
+        self._edit_hotkey_id = 3
         self._registered = False
         self._hwnd = None
         self._last_toggle = 0.0
         self._last_settings = 0.0
+        self._last_edit = 0.0
         self._filter = _HotkeyEventFilter(self)
 
     def register(self, hwnd: int):
@@ -44,10 +48,13 @@ class HotkeyManager(QObject):
         ok2 = user32.RegisterHotKey(
             hwnd, self._settings_hotkey_id, MOD_ALT | MOD_CONTROL, VK_S
         )
+        ok3 = user32.RegisterHotKey(hwnd, self._edit_hotkey_id, 0, VK_F7)
         if not ok1:
             logger.warning("RegisterHotKey F8 失敗，可能被其他程式佔用")
         if not ok2:
             logger.warning("RegisterHotKey Ctrl+Alt+S 失敗")
+        if not ok3:
+            logger.warning("RegisterHotKey F7 失敗，可能被其他程式佔用")
         self._registered = True
 
     def unregister(self, hwnd: int):
@@ -55,6 +62,7 @@ class HotkeyManager(QObject):
             return
         user32.UnregisterHotKey(hwnd, self._hotkey_id)
         user32.UnregisterHotKey(hwnd, self._settings_hotkey_id)
+        user32.UnregisterHotKey(hwnd, self._edit_hotkey_id)
         self._registered = False
 
     def reregister(self):
@@ -76,6 +84,12 @@ class HotkeyManager(QObject):
                 return True
             self._last_settings = now
             self.settings_requested.emit()
+            return True
+        elif wparam == self._edit_hotkey_id:
+            if now - self._last_edit < 0.3:
+                return True
+            self._last_edit = now
+            self.edit_prompt_requested.emit()
             return True
         return False
 

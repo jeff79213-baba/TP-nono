@@ -71,6 +71,7 @@ class AppController(QObject):
     def _connect_signals(self):
         self._hotkey.toggled.connect(self._pipeline.toggle_recording)
         self._hotkey.settings_requested.connect(self._show_settings)
+        self._hotkey.edit_prompt_requested.connect(self._show_edit_prompt)
         self._pipeline.recording_started.connect(self._on_recording_started)
         self._pipeline.recording_stopped.connect(self._on_recording_stopped)
         self._pipeline.processing_started.connect(self._on_processing_started)
