@@ -71,7 +71,7 @@ class AppController(QObject):
     def _connect_signals(self):
         self._hotkey.toggled.connect(self._pipeline.toggle_recording)
         self._hotkey.settings_requested.connect(self._show_settings)
-        self._hotkey.edit_prompt_requested.connect(self._show_edit_prompt)
+        self._hotkey.edit_prompt_requested.connect(self._quick_save_prompt)
         self._pipeline.recording_started.connect(self._on_recording_started)
         self._pipeline.recording_stopped.connect(self._on_recording_stopped)
         self._pipeline.processing_started.connect(self._on_processing_started)
@@ -138,6 +138,14 @@ class AppController(QObject):
     def _show_edit_prompt(self):
         dialog = PromptEditDialog(self._config)
         dialog.exec()
+
+    def _quick_save_prompt(self):
+        prompt = self._config.config.llm.system_prompt.strip()
+        if not prompt:
+            self._tray.notify_error("錯誤", "潤飾指令不能為空白")
+            return
+        self._config.update_system_prompt(prompt)
+        self._tray.notify("狀態", "潤飾指令已重新儲存")
 
     def _quit(self):
         self._hotkey.unregister(int(self._tray.native_window_id()))
