@@ -1,7 +1,7 @@
 import math
 import numpy as np
-from PyQt6.QtWidgets import QWidget, QApplication
-from PyQt6.QtGui import QPainter, QColor, QBrush, QPen
+from PyQt6.QtWidgets import QWidget, QApplication, QLabel, QVBoxLayout
+from PyQt6.QtGui import QPainter, QColor, QBrush, QPen, QFont
 from PyQt6.QtCore import Qt, QTimer, QRect
 
 
@@ -25,7 +25,7 @@ class VolumeWidget(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
 
         width = self.BAR_COUNT * (self.BAR_WIDTH + self.BAR_GAP) + self.BAR_GAP
-        self.setFixedSize(width, self.MAX_HEIGHT + 40)
+        self.setFixedSize(width, self.MAX_HEIGHT + 60)
 
         screen = QApplication.primaryScreen()
         if screen:
@@ -40,6 +40,13 @@ class VolumeWidget(QWidget):
         self._target_levels = np.zeros(self.BAR_COUNT, dtype=np.float32)
         self._current_volume = 0.0
 
+        self._status_label = QLabel("", self)
+        self._status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._status_label.setFont(QFont("Microsoft JhengHei", 11))
+        self._status_label.setStyleSheet("color: #e0e0e0; background: transparent;")
+        self._status_label.setGeometry(0, self.MAX_HEIGHT + 10, width, 30)
+        self._status_label.hide()
+
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
         self._timer.setInterval(30)
@@ -49,6 +56,7 @@ class VolumeWidget(QWidget):
         self._levels.fill(0)
         self._target_levels.fill(0)
         self._current_volume = 0.0
+        self._status_label.hide()
         self._timer.start()
         self.raise_()
         self.activateWindow()
@@ -59,6 +67,14 @@ class VolumeWidget(QWidget):
 
     def set_volume(self, volume: float):
         self._current_volume = min(volume * 10.0, 1.0)
+
+    def show_status(self, text: str):
+        self._status_label.setText(text)
+        self._status_label.show()
+        self.raise_()
+
+    def hide_status(self):
+        self._status_label.hide()
 
     def _tick(self):
         target = self._current_volume

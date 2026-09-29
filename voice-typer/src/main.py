@@ -105,21 +105,24 @@ class AppController(QObject):
         self._volume_widget.show()
 
     def _on_recording_stopped(self):
-        pass
+        self._volume_widget.show_status("文字傳送中...")
 
     def _on_cancelled(self):
+        self._volume_widget.hide_status()
         self._volume_widget.hide()
         self._tray.set_idle()
         self._tray.notify("已取消", "錄音已取消")
 
     def _on_processing_started(self):
         self._tray.set_processing()
-        self._volume_widget.hide()
+        self._volume_widget.show_status("文字處理中...")
 
     def _on_processing_done(self):
+        self._volume_widget.hide_status()
         self._tray.flash_done()
 
     def _on_error(self, msg: str):
+        self._volume_widget.hide_status()
         self._volume_widget.hide()
         self._tray.flash_done()
         self._tray.notify_error("錯誤", msg)
