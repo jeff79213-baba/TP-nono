@@ -63,6 +63,9 @@ class PipelineOrchestrator(QObject):
                 self._recorder.stop_recording()
                 self._recorder.reset()
                 self.cancelled.emit()
+            elif self._processing:
+                logger.info("取消處理中")
+                self.cancelled.emit()
 
     def _on_auto_stop(self):
         with self._lock:
