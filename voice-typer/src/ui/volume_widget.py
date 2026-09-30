@@ -39,6 +39,7 @@ class VolumeWidget(QWidget):
         self._levels = np.zeros(self.BAR_COUNT, dtype=np.float32)
         self._target_levels = np.zeros(self.BAR_COUNT, dtype=np.float32)
         self._current_volume = 0.0
+        self._processing_mode = False
 
         self._status_label = QLabel("", self)
         self._status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -76,7 +77,17 @@ class VolumeWidget(QWidget):
     def hide_status(self):
         self._status_label.hide()
 
+    def set_processing_mode(self, enabled: bool):
+        self._processing_mode = enabled
+        if enabled:
+            self._levels.fill(0)
+            self._target_levels.fill(0)
+            self._current_volume = 0.0
+            self.update()
+
     def _tick(self):
+        if self._processing_mode:
+            return
         target = self._current_volume
         spread = max(int(target * self.BAR_COUNT * 1.5), 1)
 
@@ -91,6 +102,8 @@ class VolumeWidget(QWidget):
         self.update()
 
     def paintEvent(self, event):
+        if self._processing_mode:
+            return
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
