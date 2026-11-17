@@ -98,8 +98,14 @@ class GroqLLMClient:
                 {"role": "user", "content": text},
             ],
             "temperature": self.temperature,
-            "max_tokens": self.max_tokens,
         }
+        if "gpt-oss" in self.model:
+            # gpt-oss 是推理模型：預設推理等級會把 token 預算吃光，
+            # 導致 content 回傳空字串。降低推理等級並加大預算。
+            payload["reasoning_effort"] = "low"
+            payload["max_completion_tokens"] = max(self.max_tokens, 4096)
+        else:
+            payload["max_tokens"] = self.max_tokens
 
         with httpx.Client(timeout=60.0) as client:
             resp = client.post(url, headers=headers, json=payload)

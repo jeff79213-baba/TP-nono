@@ -163,6 +163,9 @@ class PipelineOrchestrator(QObject):
             )
             logger.info("呼叫文字潤飾 API...")
             polished = llm.polish(text)
+            if not polished:
+                logger.warning("潤飾結果為空，改用原始辨識文字")
+                polished = text
             logger.info(f"潤飾結果: '{polished}'")
 
             logger.info("模擬 Ctrl+V 貼上文字")
